@@ -1,0 +1,182 @@
+Running an AWS Glue ETL Job
+---------------------------------------------------------------------------
+
+This document explains how to deploy and run an AWS Glue ETL (Extract, 
+Transform, Load) script that processes transaction data and assigns a risk 
+level based on transaction amount.
+
+The ETL job reads a CSV dataset from Amazon S3, performs data 
+transformation using PySpark, and writes the result to Amazon S3 in 
+Parquet format.
+
+---------------------------------------------------------------------------
+Architecture Overview
+---------------------------------------------------------------------------
+
+Amazon S3 (Raw Dataset)
+        ↓
+AWS Glue ETL Job
+        ↓
+Data Transformation (PySpark)
+        ↓
+Amazon S3 (Processed Data in Parquet)
+        ↓
+Amazon Athena (Query Processed Data)
+
+---------------------------------------------------------------------------
+Step 1 : Upload the ETL Script to AWS Glue
+---------------------------------------------------------------------------
+
+1. Open AWS Management Console
+2. Navigate to AWS Glue
+3. Go to ETL Jobs
+4. Click Create Job
+5. Select Script Editor
+6. Choose Spark as the job type
+7. Choose Python as the language
+8. Paste the ETL script into the editor 
+    Script : glue_jobs/fraud_risk_etl.py
+9. Save the script
+
+Alternatively, upload the script to S3 and reference the script
+location while creating the job.
+
+---------------------------------------------------------------------------
+Step 2 : Configure the Glue Job
+---------------------------------------------------------------------------
+
+Provide the job configuration details.
+
+Job Details
+
+Job Name:
+fraud-risk-analysis-job
+
+IAM Role:
+Select or create an IAM role that has the following permissions:
+
+AmazonS3FullAccess
+AWSGlueServiceRole
+CloudWatchLogsFullAccess
+
+Glue Version:
+Glue 4.0 (Recommended)
+
+Worker Type:
+G.1X
+
+Number of Workers:
+2
+
+Timeout:
+10 minutes (or as required)
+
+---------------------------------------------------------------------------
+Step 3 : Configure Job Parameters
+---------------------------------------------------------------------------
+
+This script uses runtime parameters for input and output paths.
+
+Add the following parameters in the job configuration:
+
+--INPUT_PATH
+--OUTPUT_PATH
+
+Example values:
+
+--INPUT_PATH
+s3://fraud-detection-data/transaction/creditcard.csv
+
+--OUTPUT_PATH
+s3://fraud-detection-data/processed-data/
+
+These parameters allow the script to dynamically read input
+data and store output results.
+
+---------------------------------------------------------------------------
+Step 4 : ETL Script Logic
+---------------------------------------------------------------------------
+
+The script performs the following operations:
+
+1. Initializes Spark and Glue contexts
+2. Reads transaction dataset from S3
+3. Infers schema automatically
+4. Adds a new column called "risk_level"
+5. Categorizes transactions based on amount
+6. Stores transformed data in Parquet format
+
+Risk Level Classification:
+
+Amount < 50       → Low Risk
+Amount ≤ 200      → Medium Risk
+Amount > 200      → High Risk
+
+This transformation helps identify potentially risky
+transactions for fraud analysis.
+
+---------------------------------------------------------------------------
+Step 5 : Run the Glue Job
+---------------------------------------------------------------------------
+
+Steps:
+
+1. Go to AWS Glue
+2. Navigate to Jobs
+3. Select the job you created
+4. Click Run Job
+
+The job will start executing and process the dataset.
+
+---------------------------------------------------------------------------
+Step 6 : Monitor Job Execution
+---------------------------------------------------------------------------
+
+You can monitor the job execution through:
+
+AWS Glue Job Runs
+CloudWatch Logs
+
+Steps:
+
+1. Open AWS Glue
+2. Go to Job Runs
+3. Check job status
+4. View logs in CloudWatch if errors occur
+
+---------------------------------------------------------------------------
+Step 7 : Verify Output Data
+---------------------------------------------------------------------------
+
+After successful job completion, the processed dataset
+will be stored in the specified S3 location.
+
+Example Output Path:
+
+s3://fraud-detection-data/processed/
+
+The dataset will be stored in Parquet format for efficient
+analytics and querying.
+
+---------------------------------------------------------------------------
+Step 8 : Query Data Using Amazon Athena
+---------------------------------------------------------------------------
+
+The processed data can be queried using Amazon Athena.
+
+Steps:
+
+1. Open AWS Console
+2. Navigate to Amazon Athena
+3. Create a table pointing to the processed S3 location
+4. Run queries on the dataset
+
+Example Query:
+
+SELECT risk_level, COUNT(*)
+FROM transactions
+GROUP BY risk_level;
+
+This query calculates the number of transactions in each
+risk category.
+
